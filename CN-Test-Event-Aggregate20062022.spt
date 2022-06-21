@@ -1,0 +1,606 @@
+<?xml version = "1.0" encoding = "UTF-8" ?>
+
+<Script>
+  <Version>1.0</Version>
+  <Description>
+    Unit tests script for EVENT data functions.
+    Here a specific scenario has been defined.
+  </Description>
+
+  <Copyright>2022 Bentley Systems, Incorporated. All rights reserved.</Copyright>
+
+  <Parameter>
+    <Name>blnThrowExceptionOnFailure</Name>
+    <Type>boolean</Type>
+    <Default>true</Default>
+    <Alias>Throw Exception on Failure</Alias>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strAttrCorridor</Name>
+    <Type>string</Type>
+    <Source>corridor</Source>
+    <Alias>Corridor</Alias>
+    <Default>121</Default>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strMarkerStart</Name>
+    <Type>string</Type>
+    <Default>2</Default>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strMarkerEnd</Name>
+    <Type>string</Type>
+    <Default>2</Default>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strAttrTrackId</Name>
+    <Type>string</Type>
+    <Alias>Track</Alias>
+    <Default>01</Default>
+  </Parameter>
+
+  <Commands>
+
+    <!-- 
+      The event.Aggregate () function is defined with the Events section of the command reference guide (section 14.2)
+			The event.Aggregate () function allows the system to perform a series of aggregation functions based on the 
+			specified aggregate option and event data field.
+			
+			The aggregation options supported at present are :
+
+          Count, Dominant, Maximum, Mean, Minimum, Median, Mode, StandardDeviation, Sum, ProratedSum, WeightedMean
+
+      The following script performs the following:
+
+			    1. Define a set of data in memory to be used for the testing.
+					2. Executes a series of functions defined within the script to test each of the aggregate options.
+          3. Compares the aggregated value against a known, defined value which in turn provide a success
+					   or failure of the function.
+          4. A boolean parameter defined at the start of the script controls the generation of warning messages
+					   or error ( and thus failure ) messages.
+ 
+      In the following we are going to concentrate on the "Freight Speed"
+      The Freight speed values used in the 5 events are :
+
+          15, 15, 20, 35, 45
+
+      The following have been calculated based on the above:
+
+      * All dates used need to be defined as VARIABLE values and must have a specified date format.
+      * The parameter blnThrowExceptionOnFailure needs to be catered for within the script.
+      * Script spacing needs to be observed.
+
+      Note: The whole script now makes use of uniCentimetre as the unit of measure.
+
+      uniFoot = unit.GetUnit ("US Customary", "foot")
+      uniMetre = unit.GetUnit ("Metric", "metre")
+	  -->
+
+	  uniCentimeters = unit.GetUnit("Metric", "centimetre")
+    strDateFormat = util.Assign ("yyyy-MM-dd")
+    strAttrSource = util.Assign ("Freight Speed")
+    <!-- Initial Date range is 2 years -->
+    strAttrStartDateValue = util.Assign ("2020-01-01 00:00:00.0")
+    strAttrEndDateValue = util.Assign ("2022-01-01 00:00:00.0")
+
+    strAttrStartDate = util.Assign ("Start Date")
+    strAttrEndDate = util.Assign ("End Date")
+    estMarkerRangeEvents = event.CreateRangeEventsFromMarkers (strAttrCorridor, , , , , uniCentimeters, strAttrTrackId )
+
+    datAttrStartDate = util.ParseDate (strAttrStartDateValue, strDateFormat)
+    datAttrEndDate = util.ParseDate (strAttrEndDateValue, strDateFormat)
+
+    <!-- ################################################################################################
+         ################################### LINEAR EVENT MASKS #########################################
+         ################################################################################################
+    -->
+    strEventSetName = util.Assign ("EVENT-MASK")
+    estEventMask = script.Call ("subF-ExtractTestData", strEventSetName, strAttrCorridor, strAttrTrackId, strMarkerStart, strMarkerEnd, "Corridor" )
+    <!-- Variant 1 [Test set T1 - Many Linear events agains a corridor] -->
+    strEventSetName = util.Assign ("TEST-T1")
+    estEventsTargetT1 = script.Call ("subF-ExtractTestData", strEventSetName, strAttrCorridor, strAttrTrackId, strMarkerStart, strMarkerEnd, "Corridor" )
+
+    bolSuccess = script.Call ("subF-TestAggregateFunctionT1", blnThrowExceptionOnFailure, "T1", estEventMask, estEventsTargetT1, strAttrSource)
+    
+  </Commands>
+
+  <!--#########################################################################################################
+      ######################################   TEST FUNCTION DEFINITION SECTION ###############################
+      #########################################################################################################
+  -->
+
+  <Function logged = "false">
+    <Name>subF-TestAggregateFunctionT1</Name>
+
+    <Parameter>
+      <Name>blnThrowExceptionOnFailure</Name>
+      <Type>boolean</Type>
+      <Default>true</Default>
+      <Alias>Throw Exception on Failure</Alias>
+    </Parameter>
+
+    <Parameter>
+      <Name>strTest</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>estEventsMask</Name>
+      <Type>eventSet</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>estEventsTarget</Name>
+      <Type>eventSet</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strAttrSource</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <!-- Variant 1 -->
+    <!-- Test set T1 [ This test has been defined specifically ]-->
+    <!-- Note: Values returned for the functions listed against expected results:
+
+               Count                    :  2 
+               Dominant                 : 15
+               Maximum                  : 20   
+               Mean                     : 17.5   
+               Median                   : 17.5   
+               Minimum                  : 15   
+               Mode                     : 15   
+               Standard Deviation       :  2.5               
+               Sum                      : 35 
+               Prorated Sum             : 16.0 
+               Weighted Mean            : 16.25                
+               WeightedStandardDeviation:  2.8 
+    -->
+    <Commands>
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Count", strAttrSource, "Freight Speed Count", estEventsMask, estEventsTarget, 2, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Dominant", strAttrSource, "Freight Speed Dominant", estEventsMask, estEventsTarget, 15, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Maximum", strAttrSource, "Freight Speed Maximum", estEventsMask, estEventsTarget, 20, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Mean", strAttrSource, "Freight Speed Mean", estEventsMask, estEventsTarget, 17.5, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Median", strAttrSource, "Freight Speed Median", estEventsMask, estEventsTarget, 17.5, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Minimum", strAttrSource, "Freight Speed Minimum", estEventsMask, estEventsTarget, 15, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Mode", strAttrSource, "Freight Speed Mode", estEventsMask, estEventsTarget, 15, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "StandardDeviation", strAttrSource, "Freight Speed StdDev", estEventsMask, estEventsTarget, 2.5, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "Sum", strAttrSource, "Freight Speed Sum", estEventsMask, estEventsTarget, 35, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "ProratedSum", strAttrSource, "Freight Speed Prorated Sum", estEventsMask, estEventsTarget, 16.0, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "WeightedMean", strAttrSource, "Freight Speed WeightedMean", estEventsMask, estEventsTarget, 16.25, )
+      bolSuccess = script.Call ("subF-TestAggregateFunction", blnThrowExceptionOnFailure, strTest, "WeightedStandardDeviation", strAttrSource, "Freight Speed WeightedStdDev", estEventsMask, estEventsTarget, 2.8, )
+    </Commands>
+  </Function>
+
+  <Function logged = "false">
+    <Name>subF-TestAggregateFunction</Name>
+
+    <Parameter>
+      <Name>blnThrowExceptionOnFailure</Name>
+      <Type>boolean</Type>
+      <Default>true</Default>
+      <Alias>Throw Exception on Failure</Alias>
+    </Parameter>
+
+    <Parameter>
+      <Name>strTest</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strOption</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strSourceAttr</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strTargetAttr</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>estTestMask</Name>
+      <Type>eventSet</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>estTest</Name>
+      <Type>eventSet</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>valueExpected</Name>
+      <Type>double</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strHistFilterOpt</Name>
+      <Type>string</Type>
+      <Default></Default>
+      <Source>choice</Source>
+      <Choice>Within</Choice>
+      <Choice>Contain</Choice>
+      <Choice>Overlap</Choice>
+      <Choice>Exclude</Choice>
+    </Parameter>
+
+    <Commands>
+      strMsg=util.Assign ("######################################################################################################################")
+      console.ShowValue (">", strMsg)
+      strMsg=string.Format ("Test [%s] Source [%s] Target [%s] Option [%s] Historic Filter [%s]", strTest, strSourceAttr, strTargetAttr, strOption, strHistFilterOpt)
+      console.ShowValue ("Execution Parameters:", strMsg)
+      estEvents = event.Aggregate (estTestMask, estTest, strSourceAttr, strTargetAttr, strOption, strHistFilterOpt)
+      strMsg=string.Format ("Function [%s] Filter [%s]", strOption, strHistFilterOpt)
+      lisResultSet = event.GetEventList (estEvents)
+<!--
+console.ShowValue ("Mask Set", estTestMask)
+console.ShowValue ("Test Set", estTest)
+console.ShowValue (strTargetAttr, lisResultSet)
+-->
+      evtEventAttributes = collection.ListGet (lisResultSet, 0)
+<!--
+console.ShowValue (strTargetAttr, evtEventAttributes)
+-->
+      value = event.GetEventAttribute (evtEventAttributes, strTargetAttr)
+      <!-- Here we are going to ROUND up the weighted mean value BUT this needs to come out in the final script.-->
+      <!-- <If condition = "$strOption == &quot;WeightedMean&quot; || $strOption == &quot;WeightedStandardDeviation&quot;" verbose = "false"> -->
+      <If condition = "$strOption == &quot;Mean&quot; || $strOption == &quot;ProratedSum&quot; || $strOption == &quot;WeightedMean&quot; || $strOption == &quot;WeightedStandardDeviation&quot; || $strOption == &quot;StandardDeviation&quot;" verbose = "false">
+        <Then>
+          <!--
+           <If condition = "$strOption == &quot;Mean&quot; ||$strOption == &quot;WeightedMean&quot; || $strOption == &quot;WeightedStandardDeviation&quot;" verbose ="false">
+           -->
+          <If condition = "$strOption == &quot;Mean&quot; ||$strOption == &quot;WeightedMean&quot; || $strOption == &quot;StandardDeviation&quot;|| $strOption == &quot;WeightedStandardDeviation&quot;" verbose = "false">
+            <Then>
+              forValue = formula.Create ("round ($value, 2)")
+              value  = formula.Evaluate (forValue, , "double")
+            </Then>
+            <Else>
+              forValue = formula.Create ("round ($value, 0)")
+              value  = formula.Evaluate (forValue, , "double")
+            </Else>
+          </If>
+        </Then>
+      </If>
+      strMsg =  string.Format ("History Filter Option [%s] Function [%S] value is ", strHistFilterOpt, strOption)
+      strCorrect = string.Append (strMsg, "Correct.")
+      strExpected = string.Format (" Value expected %s. Value obtained %s", valueExpected, value)
+      strIncorrect  = string.Append (strMsg, "Incorrect.", strExpected)
+      <If condition = "$blnThrowExceptionOnFailure" verbose = "false">
+        <Then>
+          test.FailIfNotEqual (value, valueExpected, strCorrect, strIncorrect)
+        </Then>
+        <Else>
+          test.WarnIfNotEqual (value, valueExpected, strIncorrect)
+        </Else>
+      </If>
+    </Commands>
+  </Function>
+
+
+  <!-- Create a function that takes a set of events as an imput parameter
+       together with a NUMBER. The NUMBER is the number of events that are 
+       required to be returned in the resultant event set.
+  -->
+  <Function logged = "false">
+    <Name>subF-ExtractEventRecords</Name>
+    <Parameter>
+      <Name>estEvents</Name>
+      <Type>eventSet</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>intRecs</Name>
+      <Type>integer</Type>
+    </Parameter>
+
+    <Result>
+      <Name>estResults</Name>
+      <Type>eventSet</Type>
+    </Result>
+
+    <Commands>
+      lisEventSet   = event.GetEventList (estEvents)
+      intEventRecs  = collection.Size (lisEventSet )
+      <If condition = "$intEventRecs &gt; 0" verbose = "false">
+        <Then>
+          <While condition = "$intEventRecs &gt; $intRecs" verbose = "false">
+            collection.ListRemoveIndex (lisEventSet, 0) <!-- Removes the FIRST record in the set always. -->
+            intEventRecs  = collection.Size (lisEventSet)
+          </While>
+          estResults = event.CreateEventSet (lisEventSet)
+        </Then>
+        <Else>
+          estResults = event.CreateEmptyEventSet ()
+        </Else>
+      </If>
+    </Commands>
+  </Function>
+
+   <Function Logged="false">
+    <Name>subF-ExtractTestData</Name>
+    <Description>
+      Unit tests script for EVENT data functions.
+      The script will test the event functionality for the Aggregate event function ( event.Aggregate )
+      A data set will be defined at the start of the script and this dataset will be accessed by the
+      defined Aggregate functions.
+      Note: There are 2 variants for this command and both variants need to be tested.
+    </Description>
+
+    <Parameter>
+      <Name>strEventSetName</Name>
+      <Type>string</Type>
+      <Source>choice</Source>
+      <Choice>EVENT-MASK</Choice>
+      <Choice>TEST-T1</Choice>
+    </Parameter>
+
+  <Parameter required="true">
+    <Name>strAttrCorridor</Name>
+    <Type>string</Type>
+    <Source>corridor</Source>
+    <Alias>Corridor</Alias>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strAttrTrackId</Name>
+    <Type>string</Type>
+    <Alias>Track</Alias>
+    <Default>01</Default>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strMarkerStart</Name>
+    <Type>string</Type>
+    <Default>2</Default>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strMarkerEnd</Name>
+    <Type>string</Type>
+    <Default>12</Default>
+  </Parameter>
+
+  <Parameter required="true">
+    <Name>strTraversalType</Name>
+    <Type>string</Type>
+    <Source>choice</Source>
+    <Choice>Corridor</Choice>
+    <Choice>Track</Choice>
+    <Default>Corridor</Default>
+  </Parameter>
+
+    <Result>
+      <Name>estTestEvents</Name>
+      <Type>eventSet</Type>
+    </Result>
+
+    <Commands>
+      <!--
+      uniFoot = unit.GetUnit ("US Customary", "foot")
+      -->
+	    uniCentimeters = unit.GetUnit("Metric", "centimetre")
+      strDateFormat = util.Assign ("yyyy-MM-dd")
+      estEventsMask = event.CreateEmptyEventSet ()
+      estEventsPointMask = event.CreateEmptyEventSet ()
+      <!-- Date range is 1 year -->
+      strAttrStartDate = util.Assign ("2020-01-01 00:00:00.0")
+      strAttrEndDate = util.Assign ("2022-01-01 00:00:00.0")
+
+      strAttrTrackID = util.Assign ("01")
+      strAttrStartDateTxt = util.Assign ("Start Date")
+      strAttrEndDateTxt = util.Assign ("End Date")
+      estMarkerRangeEvents = event.CreateRangeEventsFromMarkers (strAttrCorridor, , , , , uniCentimeters, strAttrTrackID )
+    
+      mapAttributeValuePairs = collection.MapCreate ()
+      datAttrStartDate = util.ParseDate (strAttrStartDate, strDateFormat)
+      datAttrEndDate = util.ParseDate (strAttrEndDate, strDateFormat)
+
+      <!-- Note: The following section where we create some events in memory could have been reduced to a
+		             stand alone script which defines a TEST event set.
+                 So here we are going to have our Current event set, our Target event set and then any historic event sets
+                 that we will use to perform historically related aggregates upon.
+
+##########################################################################################################################
+#################################################  EVENT DATA ############################################################
+##########################################################################################################################
+
+Current Mask Event Set
+======================
+Date      0          10         20         30         40         50         60         70         80        90       100
+=======   +==========+==========+==========+==========+==========+==========+==========+==========+=========+=========+
+                                                                                                     Evt M1=15  ( 20%)
+Null      +                                                                                       +===================x 
+                                                                                                  80                 100 
+Target Event Set - T1
+=====================
+                                                      Evt 1=20                                             Evt 2=15  
+Null      +=============================================================================================+=============+ 
+          0                                                                                            85            100        
+-->
+
+    control.GoToIf("$strEventSetName == \"EVENT-MASK\" || $strEventSetName == \"EVENT-MASK-TRACK\"", "EventMask")
+    control.GoToIf("$strEventSetName == \"TEST-T1\"", "TestT1")
+    <!-- #####################################################################
+         ######################    MASK EVENT SET     ########################
+         #####################################################################
+    -->
+    EventMask:
+      dblStartLoc = util.ParseDouble ("0.80")
+      dblEndLoc = util.ParseDouble ("1.00")
+      dblStartLoc = util.ParseDouble ("80")
+      dblEndLoc = util.ParseDouble ("100")
+      <!-- Event Record M1 -->
+      collection.MapPut (mapAttributeValuePairs, "Corridor", strAttrCorridor)
+      collection.MapPut (mapAttributeValuePairs, "Start Location", dblStartLoc)
+      collection.MapPut (mapAttributeValuePairs, "End Location", dblEndLoc)
+      collection.MapPut (mapAttributeValuePairs, "Freight Speed", 15)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Start Marker", strMarkerStart)
+      collection.MapPut (mapAttributeValuePairs, "End Marker", strMarkerEnd)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Traversal Type", strTraversalType)
+
+      estEventTest = script.Call ("subF-CreateTestEvents", mapAttributeValuePairs, strAttrStartDate, strAttrEndDate)
+      estEventsMask = event.Add (estEventsMask, estEventTest)
+
+    control.GoTo("End")
+      <!-- #####################################################################
+           ######################    EVENT SET T1   ############################
+           #####################################################################
+      -->
+    TestT1:
+      <!-- Create new target event set T1 -->
+      estEventsTargetT1 = event.CreateEmptyEventSet ()
+      <!-- Event Record 1 -->
+      dblStartLoc = util.ParseDouble ("0.0")
+      dblEndLoc = util.ParseDouble ("0.85")
+      dblStartLoc = util.ParseDouble ("0.0")
+      dblEndLoc = util.ParseDouble ("85")
+      collection.MapPut (mapAttributeValuePairs, "Corridor", strAttrCorridor)
+      collection.MapPut (mapAttributeValuePairs, "Start Location", dblStartLoc)
+      collection.MapPut (mapAttributeValuePairs, "End Location", dblEndLoc)
+      collection.MapPut (mapAttributeValuePairs, "Milepoint From", dblStartLoc)
+      collection.MapPut (mapAttributeValuePairs, "Milepoint To", dblEndLoc)
+      collection.MapPut (mapAttributeValuePairs, "Freight Speed", 20)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Start Marker", strMarkerStart)
+      collection.MapPut (mapAttributeValuePairs, "End Marker", strMarkerEnd)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Traversal Type", strTraversalType)
+
+      estEventTest = script.Call ("subF-CreateTestEvents", mapAttributeValuePairs, strAttrStartDate, strAttrEndDate)
+      estEventsTargetT1 = event.Add (estEventsTargetT1, estEventTest)
+
+      <!-- Event Record 2 -->
+      dblStartLoc = util.ParseDouble ("0.85")
+      dblEndLoc = util.ParseDouble ("1.00")
+      dblStartLoc = util.ParseDouble ("85")
+      dblEndLoc = util.ParseDouble ("100")
+      collection.MapPut (mapAttributeValuePairs, "Corridor", strAttrCorridor)
+      collection.MapPut (mapAttributeValuePairs, "Start Location", dblStartLoc)
+      collection.MapPut (mapAttributeValuePairs, "End Location", dblEndLoc)
+      collection.MapPut (mapAttributeValuePairs, "Freight Speed", 15)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Start Marker", strMarkerStart)
+      collection.MapPut (mapAttributeValuePairs, "End Marker", strMarkerEnd)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Traversal Type", strTraversalType)
+
+      estEventTest = script.Call ("subF-CreateTestEvents", mapAttributeValuePairs, strAttrStartDate, strAttrEndDate)
+      estEventsTargetT1 = event.Add (estEventsTargetT1, estEventTest)
+
+      <!-- Event Record 3 
+      dblStartLoc = util.ParseDouble ("0.85")
+      dblEndLoc = util.ParseDouble ("1.00")
+      dblStartLoc = util.ParseDouble ("90")
+      dblEndLoc = util.ParseDouble ("95")
+      collection.MapPut (mapAttributeValuePairs, "Corridor", strAttrCorridor)
+      collection.MapPut (mapAttributeValuePairs, "Start Location", dblStartLoc)
+      collection.MapPut (mapAttributeValuePairs, "End Location", dblEndLoc)
+      collection.MapPut (mapAttributeValuePairs, "Freight Speed", 30)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Start Marker", strMarkerStart)
+      collection.MapPut (mapAttributeValuePairs, "End Marker", strMarkerEnd)
+      collection.MapPut (mapAttributeValuePairs, "Track ID", strAttrTrackID)
+      collection.MapPut (mapAttributeValuePairs, "Traversal Type", strTraversalType)
+
+      estEventTest = script.Call ("subF-CreateTestEvents", mapAttributeValuePairs, strAttrStartDate, strAttrEndDate)
+      estEventsTargetT1 = event.Add (estEventsTargetT1, estEventTest)
+      -->
+      End:
+
+      estTestEvents = event.CreateEmptyEventSet ()
+      strEventSetName=string.Format ("%S", strEventSetName)
+      <Switch var = "strEventSetName" verbose = "false">
+        <!--  ###########################################################
+              ###########################   MASK   ######################
+              ###########################################################
+        -->
+        <Case value = "&quot;EVENT-MASK&quot;">
+          estTestEvents=event.Add (estTestEvents, estEventsMask)
+        </Case>
+        <!--  ###########################################################
+              ###########################   TEST   ######################
+              ###########################################################
+        -->
+        <Case value = "&quot;TEST-T1&quot;">
+          estTestEvents=event.Add (estTestEvents, estEventsTargetT1)
+        </Case>
+        <Default>
+          console.ShowValue ("Unidentified option", "")
+        </Default>
+      </Switch>
+    </Commands>
+  </Function>
+
+   <Function logged = "false">
+    <Name>subF-CreateTestEvents</Name>
+    <Parameter>
+      <Name>mapAttributeValuePairs</Name>
+      <Type>map</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strAttrStartDate</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Parameter>
+      <Name>strAttrEndDate</Name>
+      <Type>string</Type>
+    </Parameter>
+
+    <Result>
+      <Name>estEventsTest</Name>
+      <Type>eventSet</Type>
+    </Result>
+
+    <Commands>
+     <!--
+		  uniFoot = unit.GetUnit ("US Customary", "foot")
+      uniMetre = unit.GetUnit ("Metric", "metre")
+      -->
+	    uniCentimeters = unit.GetUnit("Metric", "centimetre")
+      strDateFormat = util.Assign("yyyy-MM-dd")
+      datStartDate = util.ParseDate (strAttrStartDate, strDateFormat)
+      datEndDate = util.ParseDate (strAttrEndDate, strDateFormat)
+      lstEventAttributes = collection.MapKeys (mapAttributeValuePairs)
+      <!-- Extract the map values -->
+      strCorridor = collection.MapGet(mapAttributeValuePairs, "Corridor") 
+      dblStartLoc = collection.MapGet(mapAttributeValuePairs, "Start Location") 
+      dblEndLoc = collection.MapGet(mapAttributeValuePairs, "End Location") 
+      strTrackID = collection.MapGet(mapAttributeValuePairs, "Track ID") 
+      strMarkerStart = collection.MapGet(mapAttributeValuePairs, "Start Marker") 
+      strMarkerEnd = collection.MapGet(mapAttributeValuePairs, "End Marker") 
+      strTraversalType = collection.MapGet(mapAttributeValuePairs, "Traversal Type") 
+      bolOkay = collection.ListRemove (lstEventAttributes, "Traversal Type")
+      <If condition = "$strTraversalType == &quot;Corridor&quot;" verbose = "false">
+        <Then>
+          strTraversalSpec = string.Format("%s,%s+%.1f,%s+%.1f", strCorridor, strMarkerStart, dblStartLoc, strMarkerEnd, dblEndLoc )
+        </Then>
+        <Else>
+          strTraversalSpec = string.Format("%s,%s+%.1f,%s,%s+%.1f", strCorridor, strMarkerStart, dblStartLoc, strTrackID, strMarkerEnd, dblEndLoc )
+        </Else>
+      </If> 
+      <!-- Create the traversal -->
+      trvCorridor = traversal.Create (strTraversalSpec, uniCentimeters)
+      estEventsTest = event.CreateOnTraversal (trvCorridor)
+      <ForEach var = "strAttribute" in = "lstEventAttributes">
+        attrVal = collection.MapGet (mapAttributeValuePairs, strAttribute)
+        estEventsTest = event.SetAttribute (estEventsTest, strAttribute, attrVal)
+      </ForEach>
+      estEventsTest = event.SetAttribute (estEventsTest, "Start Date", datStartDate)
+      estEventsTest = event.SetAttribute (estEventsTest, "End Date", datEndDate)
+      estEventsTest = event.SetDatesToAttributes(estEventsTest,"Start Date","End Date")
+    </Commands>
+  </Function>
+
+</Script>
